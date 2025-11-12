@@ -1,0 +1,10 @@
+# Node dependencies
+node_modules/
+# Environment variables
+.env
+# Logs
+logs/
+*.log
+npm-debug.log*
+# Uploads (if large or sensitive)
+uploads/
