@@ -140,7 +140,7 @@ router.put('/:id', limiter, async (req, res) => {
     const {name, phone, email, password} = req.body;
 
     const d = new Date()
-    const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short'}).format(d)
+    const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short', timeZone: 'Asia/Tehran'}).format(d)
 
     if(req.params.id === '690a6b9d37e779a0abd74979'){
         return res.json({status: false, msg: 'دسترسی لازم برای ویرایش این ادمین را ندارید!'});

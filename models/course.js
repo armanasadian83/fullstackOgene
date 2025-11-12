@@ -74,7 +74,8 @@ const courseSchema = mongoose.Schema({
         type: String,
         default: () => new Intl.DateTimeFormat('fa-IR', {
             dateStyle: 'short',
-            timeStyle: 'short'
+            timeStyle: 'short',
+            timeZone: 'Asia/Tehran'
         }).format(new Date())
     },
     dateEdited: {

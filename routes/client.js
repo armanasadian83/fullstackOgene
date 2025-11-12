@@ -253,7 +253,7 @@ router.put('/:id', limiter, async (req, res) => {
     const {name, lastName, phone, email, password} = req.body;
 
     const d = new Date()
-    const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short'}).format(d)
+    const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short', timeZone: 'Asia/Tehran'}).format(d)
 
     const clientExist = await Client.findById(req.params.id);
     let newPassword

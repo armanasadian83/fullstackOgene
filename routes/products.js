@@ -187,7 +187,7 @@ router.put('/:id', limiter, async (req, res) => {
 
 
     const d = new Date()
-    const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short'}).format(d)
+    const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short', timeZone: 'Asia/Tehran'}).format(d)
 
 
     const product = await Product.findByIdAndUpdate(
