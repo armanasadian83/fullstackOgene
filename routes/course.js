@@ -2,6 +2,11 @@ const {Course} = require('./../models/course');
 const express = require('express');
 const router = express.Router();
 
+/* img problem */
+const {ImageUpload} = require('./../models/imageUpload');
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("./cloudinary");
+
 const fs = require("fs");
 const multer  = require('multer');
 
@@ -23,54 +28,55 @@ const uploadPerMinuteLimiter = rateLimit({
 var courseEditId;
 var imagesArr = [];
 
-const storage = multer.diskStorage({
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "products",
+    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+    public_id: (req, file) => `${Date.now()}_${file.originalname}`
+  }
+});
 
-    destination: function (req, file, cb){
-        cb(null, "uploads");
-    },
-    filename: function (req, file, cb){
-        cb(null, `${Date.now()}_${file.originalname}`);
-        //imagesArr.push(`${file.originalname}`)
+const upload = multer({ storage });
+
+router.post("/upload", upload.array("images"), async (req, res) => {
+    try {
+        const imagesArr = req.files.map(file => file.path);  
+        // file.path = Cloudinary URL
+
+        // Save to DB
+        let imagesUploaded = new ImageUpload({
+            images: imagesArr,
+        });
+        await imagesUploaded.save();
+
+        return res.status(200).json(imagesArr);
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Upload failed" });
     }
-})
+});
 
-const upload = multer({storage: storage})
+router.delete("/delete-image/:publicId", async (req, res) => {
+    try {  
+        const publicId = req.params.publicId;
 
-router.post('/upload', uploadPerMinuteLimiter, upload.array("images"), async (req, res) => {
+        await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
 
-    let images;
-    if(courseEditId !== undefined){
-        const course = await Course.findById(courseEditId);
+        res.json({
+            success: true,
+            msg: "Image deleted successfully"
+        });
 
-        if(course){
-            images = course.images;
-        }
-
-        if(images.length !== 0){
-            for(image of images){
-                try {
-                    fs.unlinkSync(`uploads/${image}`);
-                } catch (error) {
-                    console.log(error);
-                    break;
-                }
-            }
-            courseEditId = undefined;
-        }
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({
+            success: false,
+            error: "Cloudinary deletion failed"
+        });
     }
-    //to here
-
-    imagesArr=[];
-    const files = req.files;
-
-    for(let i=0; i<files.length; i++){
-        imagesArr.push(files[i].filename);
-    }
-
-    console.log(imagesArr);
-
-    res.send(imagesArr);
-})
+});
 
 
 router.get('/', limiter, async (req, res) => {
@@ -100,7 +106,7 @@ router.post('/create', limiter, async (req, res) => {
         description: req.body.description,
         headline: req.body.headline,
         aboutTeacher: req.body.aboutTeacher,
-        images: imagesArr,
+        images: req.body.images,
         field: req.body.field,
         price: req.body.price,
         oldPrice: req.body.oldPrice,

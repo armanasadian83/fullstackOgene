@@ -20,6 +20,7 @@ const clientRoutes = require('./routes/client');
 const requestRoutes = require('./routes/request');
 const cartRoutes = require('./routes/cart');
 const productReviewRoutes = require('./routes/productReview');
+const imageRoutes = require('./routes/imageUpload');
 
 // deployment
 const health = require("./routes/health");
@@ -34,6 +35,7 @@ app.use(`/api/client`, clientRoutes);
 app.use(`/api/request`, requestRoutes);
 app.use(`/api/cart`, cartRoutes);
 app.use(`/api/productReview`, productReviewRoutes);
+app.use(`/api/imageUpload`, imageRoutes);
 app.use("/health", health);
 
 
