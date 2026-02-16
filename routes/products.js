@@ -79,6 +79,11 @@ router.delete("/delete-image/:publicId", async (req, res) => {
     }
 });
 
+
+
+
+
+
 router.get('/', limiter, async (req, res) => {
 
     let productList = [];

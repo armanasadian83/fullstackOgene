@@ -13,7 +13,7 @@ const limiter = rateLimit({
 });
 
 // otp
-const {sendEmail} = require('../utils/emailService');
+const {sendEmail} = require('../utils/emailService'); 
 
 
 router.post(`/signup`, limiter, async (req, res) => {
@@ -258,7 +258,7 @@ router.put('/:id', limiter, async (req, res) => {
     const clientExist = await Client.findById(req.params.id);
     let newPassword
     if(req.body.password){
-        newPassword = bcrypt.hashSync(req.body.password, 10)
+        newPassword = bcrypt.hashSync(req.body.password, 10) 
     }
     else{
         newPassword = clientExist.passwordHash;

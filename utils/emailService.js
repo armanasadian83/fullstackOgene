@@ -17,7 +17,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 
 // function to send email
-async function sendEmail(to, subject, text, html){
+async function sendEmail(to, subject, text, html){ 
     /*try{
         const info = await transporter.sendMail({
             from: process.env.EMAIL,  // sender address
