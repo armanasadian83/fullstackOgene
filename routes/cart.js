@@ -10,11 +10,25 @@ const limiter = rateLimit({
     message: "Too many requests. Slow down.",
 });
 
+
+
+router.get('/', limiter, async (req, res) => {
+
+    const forwarded = req.headers['x-forwarded-for'];
+    const realIP = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
+
+    console.log("Client IP:", realIP);
+    console.log("User Agent:", req.headers['user-agent']);
+    console.log("Full URL:", req.url);
+
+    return res.status(400).end(); // temporary
+});
+
 /*const cloudinary = require('cloudinary').v2;
 const pLimit = require('p-limit');*/
 
 // get full list
-router.get('/', limiter, async (req, res) => {
+//router.get('/', limiter, async (req, res) => {
 
     /*const {...filterParams } = req.query;
 
@@ -32,7 +46,7 @@ router.get('/', limiter, async (req, res) => {
         res.status(500).json({success : false})
     }*/
 
-    try{
+    /*try{
         if(req.query.userId !== undefined){
             const cartList = await Cart.find({userId: req.query.userId});
 
@@ -46,7 +60,7 @@ router.get('/', limiter, async (req, res) => {
         res.status(500).json({success : false})
     }
     
-});
+});*/
 
 
 /* find by id
