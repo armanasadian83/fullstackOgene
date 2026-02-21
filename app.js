@@ -50,7 +50,7 @@ if (!process.env.CONNECTION_STRING || !process.env.PORT) {
 const connectionOptions = {
     // Your current reliability options
     maxPoolSize: 10,
-    //serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
     
     // Use ONLY ONE of these SSL options:
