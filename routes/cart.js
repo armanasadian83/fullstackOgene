@@ -12,7 +12,7 @@ const limiter = rateLimit({
 
 
 
-router.get('/', limiter, async (req, res) => {
+router.get('/aaa', limiter, async (req, res) => {
 
     const forwarded = req.headers['x-forwarded-for'];
     const realIP = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
