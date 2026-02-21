@@ -6,22 +6,40 @@ const rateLimit = require('express-rate-limit');
 
 const limiter = rateLimit({
     windowMs: 1000,        // 1 second
-    max: 15,                // allow 15 requests per second
+    max: 1,                // allow 1 requests per second
     message: "Too many requests. Slow down.",
 });
 
+// Middleware to block spammer IP + UA
+router.use((req, res, next) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
+  const ua = req.headers['user-agent'] || '';
 
+  if (ip === '104.167.27.165' && ua.includes('Chrome/144.0.0.0')) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  next();
+});
 
-router.get('/aaa', limiter, async (req, res) => {
+router.get('/', limiter, async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId || userId === 'undefined') {
+    return res.status(400).json({ message: 'Invalid userId' });
+  }
 
-    const forwarded = req.headers['x-forwarded-for'];
-    const realIP = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
-
-    console.log("Client IP:", realIP);
-    console.log("User Agent:", req.headers['user-agent']);
-    console.log("Full URL:", req.url);
-
-    return res.status(400).end(); // temporary
+  // Your normal cart logic here
+  try{
+    if(req.query.userId !== undefined){
+        const cartList = await Cart.find({userId: req.query.userId});
+        if(!cartList){
+            res.status(500).json({success: false})
+        }
+        return res.status(200).json(cartList);
+    }
+} catch (error) {
+    res.status(500).json({success : false})
+}
 });
 
 /*const cloudinary = require('cloudinary').v2;
@@ -60,7 +78,7 @@ const pLimit = require('p-limit');*/
         res.status(500).json({success : false})
     }
     
-});*/
+})*/
 
 
 /* find by id
@@ -76,6 +94,13 @@ router.get("/:id", async (req, res) => {
 
     return res.status(200).send(category);
 })*/
+
+
+
+
+
+
+
 
 // delete
 router.delete('/:id',limiter, async (req, res) => {
@@ -142,7 +167,7 @@ router.put('/:id',limiter, async (req, res) => {
         req.params.id,
         {
             productTitle: req.body.productTitle,
-            image: req.body.images,
+            image: req.body.image,
             price: req.body.price,
             quantity: req.body.quantity,
             subTotal: req.body.subTotal,
