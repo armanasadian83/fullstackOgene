@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 
 const limiter = rateLimit({
     windowMs: 1000,        // 1 second
-    max: 1,                // allow 1 requests per second
+    max: 10,                // allow 10 requests per second
     message: "Too many requests. Slow down.",
 });
 
