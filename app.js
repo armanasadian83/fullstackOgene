@@ -47,7 +47,7 @@ if (!process.env.CONNECTION_STRING || !process.env.PORT) {
 }
 
 // security
-const connectionOptions = {
+/*const connectionOptions = {
     // Your current reliability options
     maxPoolSize: 10,
     //serverSelectionTimeoutMS: 5000,
@@ -63,10 +63,13 @@ const connectionOptions = {
     // Data consistency
     retryWrites: true,
     w: 'majority',                // Ensure read operations complete
-};
+};*/
+
+/*app.listen(process.env.PORT, () => {
+console.log(`server is running http://localhost:${process.env.PORT}`);})*/
 
 //Database
-mongoose.connect(process.env.CONNECTION_STRING, connectionOptions)
+mongoose.connect(process.env.CONNECTION_STRING/*, connectionOptions*/)
 .then(() => {
     console.log('Database connection is ready...')
 

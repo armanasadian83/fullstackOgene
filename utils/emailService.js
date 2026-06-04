@@ -5,7 +5,7 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // configure the SMTP transporter
-/*const transporter = nodemailer.createTransport({
+/*const transporter = nodemailer.createTransport({ 
     host: 'smtp.gmail.com', // for Gmail
     port: 465,
     secure: true, // true for port 465
@@ -32,7 +32,7 @@ async function sendEmail(to, subject, text, html){
         return {success: false, error: error.message};
     }*/
     try {
-        const { data, error } = await resend.emails.send({
+        const { data, error } = await resend.emails.send({ 
           from: process.env.MAIL_FROM,   // e.g. no-reply@yourdomain.com
           to,
           subject,

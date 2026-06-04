@@ -4,8 +4,13 @@ const router = express.Router();
 
 /* img problem */
 const {ImageUpload} = require('./../models/imageUpload');
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const cloudinary = require("./cloudinary");
+//const { CloudinaryStorage } = require("multer-storage-cloudinary");
+//const cloudinary = require("./cloudinary");
+
+// new arwan cloud configuration
+const { upload, uploadToArvan, s3 } = require('.//arvancloud');
+const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
+//
 
 const fs = require("fs");
 const multer  = require('multer');
@@ -28,16 +33,16 @@ const uploadPerMinuteLimiter = rateLimit({
 var courseEditId;
 var imagesArr = [];
 
-const storage = new CloudinaryStorage({
+/*const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: "products",
     allowed_formats: ["jpg", "png", "jpeg", "webp"],
     public_id: (req, file) => `${Date.now()}_${file.originalname}`
   }
-});
+});*/
 
-const upload = multer({ storage });
+/*const upload = multer({ storage });
 
 router.post("/upload", upload.array("images"), async (req, res) => {
     try {
@@ -74,6 +79,62 @@ router.delete("/delete-image/:publicId", async (req, res) => {
         res.status(500).json({
             success: false,
             error: "Cloudinary deletion failed"
+        });
+    }
+});*/
+
+// Route آپلود تصاویر با ArvanCloud
+router.post("/upload", upload.array("images", 10), async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: "هیچ فایلی آپلود نشده است" });
+        }
+
+        const imagesArr = [];
+        
+        // آپلود تک تک فایل‌ها
+        for (const file of req.files) {
+            const { url, key } = await uploadToArvan(file, "products");
+            imagesArr.push(url);
+            // اگر نیاز داری key را برای حذف بعدی ذخیره کنی
+            // می‌توانی یک آرایه جداگانه داشته باشی
+        }
+        
+        // ذخیره URLها در دیتابیس
+        let imagesUploaded = new ImageUpload({
+            images: imagesArr,
+        });
+        await imagesUploaded.save();
+
+        return res.status(200).json(imagesArr);
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Upload failed: " + error.message });
+    }
+});
+
+// ✅ جایگزین کن با این
+router.delete("/delete-image/:fileKey", async (req, res) => {
+    try {  
+        const fileKey = req.params.fileKey;
+        
+        const deleteCommand = new DeleteObjectCommand({
+            Bucket: process.env.ARVAN_BUCKET_NAME,
+            Key: fileKey
+        });
+        
+        await s3.send(deleteCommand);
+
+        res.json({
+            success: true,
+            msg: "Image deleted successfully"
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({
+            success: false,
+            error: "ArvanCloud deletion failed: " + err.message
         });
     }
 });
