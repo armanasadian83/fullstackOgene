@@ -24,6 +24,9 @@ const imageRoutes = require('./routes/imageUpload');
 
 // deployment
 const health = require("./routes/health");
+const sitemapRoutes = require('./routes/sitemap');
+
+app.use('/', sitemapRoutes);
 
 app.use('/uploads', express.static('uploads')); 
 app.use(`/api/event`, eventRoutes);
