@@ -21,12 +21,13 @@ const requestRoutes = require('./routes/request');
 const cartRoutes = require('./routes/cart');
 const productReviewRoutes = require('./routes/productReview');
 const imageRoutes = require('./routes/imageUpload');
+const orderRoutes = require('./routes/orders');
 
 // deployment
 const health = require("./routes/health");
-const sitemapRoutes = require('./routes/sitemap');
+//const sitemapRoutes = require('./routes/sitemap');
 
-app.use('/', sitemapRoutes);
+//app.use('/', sitemapRoutes);
 
 app.use('/uploads', express.static('uploads')); 
 app.use(`/api/event`, eventRoutes);
@@ -39,6 +40,7 @@ app.use(`/api/request`, requestRoutes);
 app.use(`/api/cart`, cartRoutes);
 app.use(`/api/productReview`, productReviewRoutes);
 app.use(`/api/imageUpload`, imageRoutes);
+app.use('/api/orders', orderRoutes);
 app.use("/health", health);
 
 
