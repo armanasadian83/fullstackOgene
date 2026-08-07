@@ -32,6 +32,14 @@ const clientSchema = mongoose.Schema({
     otpExpires:{
         type: Date
     },
+    resetPasswordOTP:{
+        type: String,
+        default: null
+    },
+    resetPasswordOTPExpires:{
+        type: Date,
+        default: null
+    },
     dateCreated: {
         type: String,
         default: () => new Intl.DateTimeFormat('fa-IR', {

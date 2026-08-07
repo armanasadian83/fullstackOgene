@@ -283,7 +283,429 @@ router.put('/:id', limiter, async (req, res) => {
 
     res.send(client);
 
-})
+});
+
+
+// 1. FORGOT PASSWORD - Send Reset Code to Email
+router.post('/forgot-password', limiter, async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Validate email
+        if (!email) {
+            return res.json({ 
+                error: true, 
+                msg: "ایمیل خود را وارد کنید!" 
+            });
+        }
+
+        // Check if user exists
+        const client = await Client.findOne({ email });
+        if (!client) {
+            return res.json({ 
+                error: true, 
+                msg: "کاربری با این ایمیل یافت نشد!" 
+            });
+        }
+
+        // Check if user is verified
+        if (!client.isVerified) {
+            return res.json({ 
+                error: true, 
+                msg: "ایمیل شما تایید نشده است! لطفا ابتدا ایمیل خود را تایید کنید." 
+            });
+        }
+
+        // Generate 6-digit reset code
+        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Save reset code to user
+        client.resetPasswordOTP = resetCode;
+        client.resetPasswordOTPExpires = Date.now() + 600000; // 10 minutes
+        await client.save();
+
+        // Send reset code via email
+        const emailSent = await sendEmailFun(
+            email, 
+            "بازیابی رمز عبور", 
+            "", 
+            `کد بازیابی رمز عبور شما: ${resetCode}`
+        );
+
+        if (emailSent) {
+            return res.status(200).json({
+                success: true,
+                message: "کد بازیابی به ایمیل شما ارسال شد!",
+                email: email // Send email back for OTP verification
+            });
+        } else {
+            return res.json({
+                error: true,
+                msg: "مشکل در ارسال ایمیل! لطفا دوباره تلاش کنید."
+            });
+        }
+
+    } catch (error) {
+        console.log('Error in forgot-password:', error);
+        res.json({ 
+            error: true, 
+            msg: "مشکلی در ارسال کد بازیابی وجود دارد!" 
+        });
+    }
+});
+
+// 2. VERIFY RESET OTP - Verify the Reset Code
+router.post('/verify-reset-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        // Validate input
+        if (!email || !otp) {
+            return res.json({
+                success: false,
+                message: "ایمیل و کد را وارد کنید!"
+            });
+        }
+
+        // Find user
+        const client = await Client.findOne({ email });
+        if (!client) {
+            return res.json({
+                success: false,
+                message: "کاربر پیدا نشد!"
+            });
+        }
+
+        // Check if reset code exists
+        if (!client.resetPasswordOTP) {
+            return res.json({
+                success: false,
+                message: "درخواست بازیابی رمز عبور ثبت نشده است!"
+            });
+        }
+
+        // Verify code and expiry
+        const isCodeValid = client.resetPasswordOTP === otp;
+        const isNotExpired = client.resetPasswordOTPExpires > Date.now();
+
+        if (isCodeValid && isNotExpired) {
+            // Code is valid - allow password reset
+            return res.status(200).json({
+                success: true,
+                message: "کد تایید شد!",
+                email: email
+            });
+        } else if (!isCodeValid) {
+            return res.json({
+                success: false,
+                message: "کد وارد شده اشتباه است!"
+            });
+        } else {
+            return res.json({
+                success: false,
+                message: "کد منقضی شده است! لطفا دوباره درخواست کنید."
+            });
+        }
+
+    } catch (error) {
+        console.log("Error in verify-reset-otp:", error);
+        res.json({
+            success: false,
+            message: "مشکلی در تایید کد وجود دارد!"
+        });
+    }
+});
+
+// 3. RESET PASSWORD - Set New Password
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { email, newPassword, confirmPassword } = req.body;
+
+        // Validate passwords
+        if (!newPassword || !confirmPassword) {
+            return res.json({
+                error: true,
+                msg: "لطفا رمز عبور جدید و تکرار آن را وارد کنید!"
+            });
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.json({
+                error: true,
+                msg: "رمز عبور ها باهم تطابق ندارند!"
+            });
+        }
+
+        if (newPassword.length < 7) {
+            return res.json({
+                error: true,
+                msg: "رمز عبور حداقل باید 7 حرف/عدد باشد!"
+            });
+        }
+
+        if (newPassword.includes(" ")) {
+            return res.json({
+                error: true,
+                msg: "فاصله در رمز عبور مجاز نیست!"
+            });
+        }
+
+        // Find user
+        const client = await Client.findOne({ email });
+        if (!client) {
+            return res.json({
+                error: true,
+                msg: "کاربر پیدا نشد!"
+            });
+        }
+
+        // 🔒 CRITICAL SECURITY CHECK - Add this!
+        // Check if user has a valid reset OTP
+        if (!client.resetPasswordOTP) {
+            return res.json({
+                error: true,
+                msg: "درخواست بازیابی رمز عبور معتبر نیست!"
+            });
+        }
+
+        // Check if OTP is expired
+        if (client.resetPasswordOTPExpires < Date.now()) {
+            return res.json({
+                error: true,
+                msg: "زمان درخواست بازیابی رمز عبور منقضی شده است! لطفا دوباره تلاش کنید."
+            });
+        }
+
+        // Hash new password
+        const hashPassword = await bcrypt.hash(newPassword, 10);
+        
+        // Update password and clear reset fields
+        client.password = hashPassword;
+        client.resetPasswordOTP = null;
+        client.resetPasswordOTPExpires = null;
+        
+        // Update edit date
+        const d = new Date();
+        client.dateEdited = new Intl.DateTimeFormat('fa-IR', {
+            dateStyle: 'short',
+            timeStyle: 'short', 
+            timeZone: 'Asia/Tehran'
+        }).format(d);
+        
+        await client.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "رمز عبور با موفقیت تغییر یافت!"
+        });
+
+    } catch (error) {
+        console.log("Error in reset-password:", error);
+        res.json({
+            error: true,
+            msg: "مشکلی در تغییر رمز عبور وجود دارد!"
+        });
+    }
+});
+
+// CHANGE PASSWORD - Send OTP to logged-in user's email
+router.post('/change-password-send-otp', limiter, async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.json({
+                error: true,
+                msg: "ایمیل خود را وارد کنید!"
+            });
+        }
+
+        // Find user
+        const client = await Client.findOne({ email });
+        if (!client) {
+            return res.json({
+                error: true,
+                msg: "کاربر پیدا نشد!"
+            });
+        }
+
+        // Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Save OTP (using existing resetPasswordOTP fields or create new ones)
+        client.resetPasswordOTP = otp;
+        client.resetPasswordOTPExpires = Date.now() + 600000; // 10 minutes
+        await client.save();
+
+        // Send email with OTP
+        const emailSent = await sendEmailFun(
+            email,
+            "تغییر رمز عبور",
+            "",
+            `کد تایید برای تغییر رمز عبور: ${otp}`
+        );
+
+        if (emailSent) {
+            return res.status(200).json({
+                success: true,
+                message: "کد تایید به ایمیل شما ارسال شد!",
+                email: email
+            });
+        } else {
+            return res.json({
+                error: true,
+                msg: "مشکل در ارسال ایمیل! لطفا دوباره تلاش کنید."
+            });
+        }
+
+    } catch (error) {
+        console.log('Error in change-password-send-otp:', error);
+        res.json({
+            error: true,
+            msg: "مشکلی در ارسال کد وجود دارد!"
+        });
+    }
+});
+
+// CHANGE PASSWORD - Verify OTP
+router.post('/change-password-verify-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.json({
+                success: false,
+                message: "ایمیل و کد را وارد کنید!"
+            });
+        }
+
+        const client = await Client.findOne({ email });
+        if (!client) {
+            return res.json({
+                success: false,
+                message: "کاربر پیدا نشد!"
+            });
+        }
+
+        // Verify code and expiry
+        const isCodeValid = client.resetPasswordOTP === otp;
+        const isNotExpired = client.resetPasswordOTPExpires > Date.now();
+
+        if (isCodeValid && isNotExpired) {
+            return res.status(200).json({
+                success: true,
+                message: "کد تایید شد!",
+                email: email
+            });
+        } else if (!isCodeValid) {
+            return res.json({
+                success: false,
+                message: "کد وارد شده اشتباه است!"
+            });
+        } else {
+            return res.json({
+                success: false,
+                message: "کد منقضی شده است! لطفا دوباره درخواست کنید."
+            });
+        }
+
+    } catch (error) {
+        console.log("Error in change-password-verify-otp:", error);
+        res.json({
+            success: false,
+            message: "مشکلی در تایید کد وجود دارد!"
+        });
+    }
+});
+
+// CHANGE PASSWORD - Set New Password (After OTP Verification)
+router.post('/change-password-final', async (req, res) => {
+    try {
+        const { email, newPassword, confirmPassword } = req.body;
+
+        // Validate passwords
+        if (!newPassword || !confirmPassword) {
+            return res.json({
+                error: true,
+                msg: "لطفا رمز عبور جدید و تکرار آن را وارد کنید!"
+            });
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.json({
+                error: true,
+                msg: "رمز عبور ها باهم تطابق ندارند!"
+            });
+        }
+
+        if (newPassword.length < 7) {
+            return res.json({
+                error: true,
+                msg: "رمز عبور حداقل باید 7 حرف/عدد باشد!"
+            });
+        }
+
+        if (newPassword.includes(" ")) {
+            return res.json({
+                error: true,
+                msg: "فاصله در رمز عبور مجاز نیست!"
+            });
+        }
+
+        const client = await Client.findOne({ email });
+        if (!client) {
+            return res.json({
+                error: true,
+                msg: "کاربر پیدا نشد!"
+            });
+        }
+
+        // Check if OTP is verified (must exist and not expired)
+        if (!client.resetPasswordOTP) {
+            return res.json({
+                error: true,
+                msg: "کد تایید نشده است! لطفا ابتدا کد را تایید کنید."
+            });
+        }
+
+        if (client.resetPasswordOTPExpires < Date.now()) {
+            return res.json({
+                error: true,
+                msg: "زمان کد تایید منقضی شده است! لطفا دوباره تلاش کنید."
+            });
+        }
+
+        // Hash new password
+        const hashPassword = await bcrypt.hash(newPassword, 10);
+        
+        // Update password and clear reset fields
+        client.password = hashPassword;
+        client.resetPasswordOTP = null;
+        client.resetPasswordOTPExpires = null;
+        
+        // Update edit date
+        const d = new Date();
+        client.dateEdited = new Intl.DateTimeFormat('fa-IR', {
+            dateStyle: 'short',
+            timeStyle: 'short', 
+            timeZone: 'Asia/Tehran'
+        }).format(d);
+        
+        await client.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "رمز عبور با موفقیت تغییر یافت!"
+        });
+
+    } catch (error) {
+        console.log("Error in change-password-final:", error);
+        res.json({
+            error: true,
+            msg: "مشکلی در تغییر رمز عبور وجود دارد!"
+        });
+    }
+});
 
 
 module.exports = router; 
