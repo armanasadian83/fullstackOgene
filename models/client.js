@@ -1,42 +1,45 @@
 const mongoose = require('mongoose');
 
 const clientSchema = mongoose.Schema({
-    name:{
+    name: {
         type: String,
         required: true
     },
-    lastName:{
+    lastName: {
         type: String,
     },
-    phone:{
+    phone: {
         type: String,
         required: true,
-        unique: false
+        unique: true,  // ← CHANGED: phone is now unique and required
+        index: true
     },
-    email:{
+    email: {
         type: String,
-        required: true,
-        unique: true
-    }, 
-    password:{
+        required: false,  // ← CHANGED: email is now optional
+        unique: true,
+        sparse: true,     // ← Allows multiple null/undefined values
+        default: null
+    },
+    password: {
         type: String,
         required: true
     },
-    isVerified:{
+    isVerified: {
         type: Boolean,
         default: false
     },
-    otp:{
+    otp: {
         type: String
     },
-    otpExpires:{
+    otpExpires: {
         type: Date
     },
-    resetPasswordOTP:{
+    resetPasswordOTP: {
         type: String,
         default: null
     },
-    resetPasswordOTPExpires:{
+    resetPasswordOTPExpires: {
         type: Date,
         default: null
     },
