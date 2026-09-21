@@ -29,9 +29,9 @@ const uploadPerMinuteLimiter = rateLimit({
     message: { error: "Too many uploads per minute." },
 });
 
-
-var productEditId;
-var imagesArr = [];
+// ❌ حذف متغیرهای سراسری
+// var productEditId;
+// var imagesArr = [];
 
 
 /*const storage = new CloudinaryStorage({
@@ -142,11 +142,6 @@ router.delete("/delete-image/:fileKey", async (req, res) => {
 });
 
 
-
-
-
-
-
 router.get('/', limiter, async (req, res) => {
 
     let productList = [];
@@ -194,8 +189,6 @@ router.post('/create', limiter, async (req, res) => {
 
     res.status(201).json(product);
 
-    imagesArr=[];
-
 });
 
 router.delete('/deleteImage', async (req, res) => {});
@@ -203,8 +196,6 @@ router.delete('/deleteImage', async (req, res) => {});
 
 
 router.get('/:id', limiter, async (req, res) => {
-
-    productEditId = req.params.id;
 
     const product = await Product.findById(req.params.id)/*.populate("category subCat")*/;
 
@@ -247,31 +238,19 @@ router.delete('/:id', limiter, async (req, res) => {
         status : true
     })
 
-    productEditId = undefined;
-
 });
-
-
-
-
 
 router.put('/:id', limiter, async (req, res) => {
 
-    if(imagesArr.length === 0){
-        imagesArr = req.body.images;
-    }
-
-
     const d = new Date()
     const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short', timeZone: 'Asia/Tehran'}).format(d)
-
 
     const product = await Product.findByIdAndUpdate(
         req.params.id,
         {
             name: req.body.name,
             description: req.body.description,
-            images: imagesArr,
+            images: req.body.images,  // ✅ مستقیماً از req.body استفاده کن
             field: req.body.field,
             price: req.body.price,
             oldPrice: req.body.oldPrice,
@@ -297,10 +276,6 @@ router.put('/:id', limiter, async (req, res) => {
         success : true
     })
 
-    imagesArr=[];
-    productEditId = undefined;
 })
 
-
-
-module.exports = router; 
+module.exports = router;

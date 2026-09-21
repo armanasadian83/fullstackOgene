@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } = require("@aws-sdk/client-s3");
 const multer = require("multer");
 
 // تنظیمات ArvanCloud
@@ -29,8 +29,8 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage: storage,
   limits: {
-        fileSize: 20 * 1024 * 1024, // 20 MB
-    },
+    fileSize: 20 * 1024 * 1024, // 20 MB
+  },
   fileFilter: fileFilter,
 });
 
@@ -58,4 +58,39 @@ const uploadToArvan = async (file, folder = "products") => {
   return { url, key };
 };
 
-module.exports = { upload, uploadToArvan, s3 };
+// تابع لیست کردن تمام تصاویر از ArvanCloud
+const listImagesFromArvan = async (prefix = "products/") => {
+  try {
+    const command = new ListObjectsV2Command({
+      Bucket: process.env.ARVAN_BUCKET_NAME,
+      Prefix: prefix,
+    });
+    
+    const response = await s3.send(command);
+    
+    if (!response.Contents) {
+      return [];
+    }
+    
+    // فیلتر کردن فقط فایل‌های تصویری و تولید URLها
+    const images = response.Contents
+      .filter(file => {
+        const ext = file.Key.split('.').pop().toLowerCase();
+        return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+      })
+      .map(file => ({
+        key: file.Key,
+        url: `${process.env.ARVAN_ENDPOINT}/${process.env.ARVAN_BUCKET_NAME}/${file.Key}`,
+        lastModified: file.LastModified,
+        size: file.Size,
+        name: file.Key.split('/').pop()
+      }));
+    
+    return images;
+  } catch (error) {
+    console.error('Error listing images from Arvan:', error);
+    throw error;
+  }
+};
+
+module.exports = { upload, uploadToArvan, s3, listImagesFromArvan };

@@ -22,6 +22,8 @@ const cartRoutes = require('./routes/cart');
 const productReviewRoutes = require('./routes/productReview');
 const imageRoutes = require('./routes/imageUpload');
 const orderRoutes = require('./routes/orders');
+const galleryRoutes = require('./routes/gallery');
+const uploadRoutes = require('./routes/upload');
 
 // deployment
 const health = require("./routes/health");
@@ -41,6 +43,9 @@ app.use(`/api/cart`, cartRoutes);
 app.use(`/api/productReview`, productReviewRoutes);
 app.use(`/api/imageUpload`, imageRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/gallery', galleryRoutes);
+app.use('/api/upload', uploadRoutes);
+
 app.use("/health", health);
 
 

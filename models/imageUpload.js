@@ -1,13 +1,38 @@
 const mongoose = require('mongoose');
 
+// Schema for individual image metadata
+const imageMetadataSchema = new mongoose.Schema({
+    name: { 
+        type: String, 
+        default: '' 
+    },
+    alt: { 
+        type: String, 
+        default: '' 
+    },
+    liked: {
+        type: Boolean,
+        default: false
+    },
+    updatedAt: { 
+        type: Date, 
+        default: Date.now 
+    }
+});
+
 const imageUploadSchema = mongoose.Schema({
-    images:[
+    images: [
         {
             type: String,
             required: true
         }
-    ]
-})
+    ],
+    // Store metadata for each image URL
+    metadata: {
+        type: Object,
+        default: {}
+    }
+});
 
 imageUploadSchema.virtual('id').get(function () {
     return this._id.toHexString();
@@ -17,5 +42,5 @@ imageUploadSchema.set('toJSON', {
     virtuals: true,
 });
 
-exports.ImageUpload = mongoose.model('ImageUpload' , imageUploadSchema);
+exports.ImageUpload = mongoose.model('ImageUpload', imageUploadSchema);
 exports.imageUploadSchema = imageUploadSchema;

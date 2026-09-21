@@ -29,9 +29,9 @@ const uploadPerMinuteLimiter = rateLimit({
     message: { error: "Too many uploads per minute." },
 });
 
-
-var courseEditId;
-var imagesArr = [];
+// ❌ حذف متغیرهای سراسری
+// var courseEditId;
+// var imagesArr = [];
 
 /*const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
@@ -191,15 +191,11 @@ router.post('/create', limiter, async (req, res) => {
 
     res.status(201).json(course);
 
-    imagesArr=[];
-
 });
 
 
 
 router.get('/:id', limiter, async (req, res) => {
-
-    courseEditId = req.params.id;
 
     const course = await Course.findById(req.params.id)/*.populate("category subCat")*/;
 
@@ -242,24 +238,12 @@ router.delete('/:id', limiter, async (req, res) => {
         status : true
     })
 
-    courseEditId = undefined;
-
 });
-
-
-
-
 
 router.put('/:id', limiter, async (req, res) => {
 
-    if(imagesArr.length === 0){
-        imagesArr = req.body.images;
-    }
-
-
     const d = new Date()
     const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short', timeZone: 'Asia/Tehran'}).format(d)
-
 
     const course = await Course.findByIdAndUpdate(
         req.params.id,
@@ -268,7 +252,7 @@ router.put('/:id', limiter, async (req, res) => {
             description: req.body.description,
             headline: req.body.headline,
             aboutTeacher: req.body.aboutTeacher,
-            images: imagesArr,
+            images: req.body.images,  // ✅ مستقیماً از req.body استفاده کن
             field: req.body.field,
             price: req.body.price,
             oldPrice: req.body.oldPrice,
@@ -296,10 +280,6 @@ router.put('/:id', limiter, async (req, res) => {
         success : true
     })
 
-    imagesArr=[];
-    courseEditId = undefined;
 })
 
-
-
-module.exports = router; 
+module.exports = router;
