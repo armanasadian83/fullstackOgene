@@ -18,7 +18,7 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
-    totalItems: {  // ← ADD THIS FIELD
+    totalItems: {
         type: Number,
         default: 0
     },
@@ -55,6 +55,15 @@ const orderSchema = new mongoose.Schema({
         },
         image: String
     }],
+
+    // ---- فیلدهای جدید مربوط به پرداخت ----
+    // unique + sparse: سفارش‌های قدیمی (بدون paymentId) مشکلی ایجاد نمی‌کنند
+    // و برای هر پرداخت حداکثر یک سفارش ساخته می‌شود.
+    paymentId: { type: String, unique: true, sparse: true },
+    refNum: { type: String, default: '' },
+    traceNo: { type: String, default: '' },
+    paidAt: { type: Date },
+
     dateCreated: {
         type: String,
         default: () => new Intl.DateTimeFormat('fa-IR', {
@@ -69,7 +78,6 @@ const orderSchema = new mongoose.Schema({
     }
 });
 
-// Create indexes for better query performance
 orderSchema.index({ clientId: 1, dateCreated: -1 });
 orderSchema.index({ status: 1 });
 

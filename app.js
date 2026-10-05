@@ -24,6 +24,7 @@ const imageRoutes = require('./routes/imageUpload');
 const orderRoutes = require('./routes/orders');
 const galleryRoutes = require('./routes/gallery');
 const uploadRoutes = require('./routes/upload');
+const paymentRoutes = require('./routes/payment');
 
 // deployment
 const health = require("./routes/health");
@@ -45,6 +46,7 @@ app.use(`/api/imageUpload`, imageRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/payment', paymentRoutes);
 
 app.use("/health", health);
 
@@ -87,6 +89,9 @@ mongoose.connect(process.env.CONNECTION_STRING/*, connectionOptions*/)
     app.listen(process.env.PORT, () => {
     console.log(`server is running http://localhost:${process.env.PORT}`);
 }) 
+
+    // payment: background job (retry verify / create missing orders / expire abandoned payments)
+    paymentRoutes.startReconciler();
 })
 .catch((err) => {
     console.log(err);
