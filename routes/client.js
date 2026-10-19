@@ -34,7 +34,17 @@ const isOTPValid = (storedOTP, storedExpiry, providedOTP) => {
 // ============================================
 
 router.post(`/signup`, limiter, async (req, res) => {
-    const { name, lastName, phone, email, password } = req.body;
+    const {
+        name,
+        lastName,
+        phone,
+        email,
+        password,
+        nationalCode,
+        birthdate,
+        englishName,
+        englishLastName
+    } = req.body;
 
     try {
         // Validate phone number (Iranian format)
@@ -89,6 +99,13 @@ router.post(`/signup`, limiter, async (req, res) => {
                 if (email && existingClient.email !== email) {
                     existingClient.email = email;
                 }
+
+                // Update new optional fields only if provided
+                if (nationalCode !== undefined) existingClient.nationalCode = nationalCode || null;
+                if (birthdate !== undefined) existingClient.birthdate = birthdate || null;
+                if (englishName !== undefined) existingClient.englishName = englishName || null;
+                if (englishLastName !== undefined) existingClient.englishLastName = englishLastName || null;
+
                 await existingClient.save();
                 client = existingClient;
             }
@@ -103,6 +120,10 @@ router.post(`/signup`, limiter, async (req, res) => {
                 password: hashPassword,
                 otp: verifyCode,
                 otpExpires: Date.now() + 600000,
+                nationalCode: nationalCode || null,
+                birthdate: birthdate || null,
+                englishName: englishName || null,
+                englishLastName: englishLastName || null
             });
             await client.save();
         }
@@ -727,41 +748,79 @@ router.get('/get/count', limiter, async (req, res) => {
     res.send({ clientCount: clientCount });
 });
 
+// ============================================
+// UPDATE CLIENT — SAFE PARTIAL UPDATE
+// ============================================
+// ✅ Only updates fields that are actually sent.
+// ✅ Never wipes `password` unless a new one is sent.
+// ✅ Fixes the old `clientExist.passwordHash` typo.
+// ✅ Works with both the account-page edit form and the CompleteInfo page.
+// ============================================
 router.put('/:id', limiter, async (req, res) => {
-    const { name, lastName, phone, email, password } = req.body;
+    try {
+        const {
+            name,
+            lastName,
+            phone,
+            email,
+            password,
+            nationalCode,
+            birthdate,
+            englishName,
+            englishLastName
+        } = req.body;
 
-    const d = new Date();
-    const time = new Intl.DateTimeFormat('fa-IR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Tehran' }).format(d);
+        const d = new Date();
+        const time = new Intl.DateTimeFormat('fa-IR', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+            timeZone: 'Asia/Tehran'
+        }).format(d);
 
-    const clientExist = await Client.findById(req.params.id);
-    let newPassword;
-    if (req.body.password) {
-        newPassword = bcrypt.hashSync(req.body.password, 10);
-    } else {
-        newPassword = clientExist.passwordHash;
+        const clientExist = await Client.findById(req.params.id);
+        if (!clientExist) {
+            return res.status(404).send('the client cannot be updated!');
+        }
+
+        // Build update object — only include fields actually sent.
+        const update = { dateEdited: time };
+
+        if (name !== undefined) update.name = name;
+        if (lastName !== undefined) update.lastName = lastName;
+        if (phone !== undefined) update.phone = phone;
+        if (email !== undefined) update.email = email || null;
+
+        // Password: only re-hash if a new password is provided.
+        // Otherwise, leave the existing hash untouched.
+        if (password) {
+            update.password = await bcrypt.hash(password, 10);
+        }
+
+        // New optional fields — only update when present.
+        if (nationalCode !== undefined) update.nationalCode = nationalCode || null;
+        if (birthdate !== undefined) update.birthdate = birthdate || null;
+        if (englishName !== undefined) update.englishName = englishName || null;
+        if (englishLastName !== undefined) update.englishLastName = englishLastName || null;
+
+        const client = await Client.findByIdAndUpdate(
+            req.params.id,
+            { $set: update },
+            { new: true }
+        );
+
+        if (!client) {
+            return res.status(400).send('the client cannot be updated!');
+        }
+
+        res.send(client);
+    } catch (error) {
+        console.error('Error in PUT /:id:', error);
+        res.status(500).json({
+            error: true,
+            msg: 'مشکلی در بروزرسانی اطلاعات کاربر وجود دارد!'
+        });
     }
-
-    const client = await Client.findByIdAndUpdate(
-        req.params.id,
-        {
-            name: name,
-            lastName: lastName,
-            phone: phone,
-            email: email || null,
-            password: newPassword,
-            dateEdited: time
-        },
-        { new: true }
-    );
-
-    if (!client) {
-        return res.status(400).send('the client cannot be updated!');
-    }
-
-    res.send(client);
 });
-
-
 
 // ============================================
 // FORCE RE-VERIFY - Admin only
@@ -815,8 +874,6 @@ router.put('/force-reverify/:id', async (req, res) => {
     }
 });
 
-
-
 // ============================================
 // VERIFY PHONE - Admin manually verifies user's phone
 // ============================================
@@ -862,7 +919,5 @@ router.put('/verify-phone/:id', async (req, res) => {
         });
     }
 });
-
-
 
 module.exports = router;

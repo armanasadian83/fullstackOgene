@@ -11,12 +11,12 @@ const clientSchema = mongoose.Schema({
     phone: {
         type: String,
         required: true,
-        unique: true,  // ← CHANGED: phone is now unique and required
+        unique: true,  // ← phone is unique and required
         index: true
     },
     email: {
         type: String,
-        required: false,  // ← CHANGED: email is now optional
+        required: false,  // ← email is optional
         unique: true,
         sparse: true,     // ← Allows multiple null/undefined values
         default: null
@@ -43,6 +43,33 @@ const clientSchema = mongoose.Schema({
         type: Date,
         default: null
     },
+
+    // ============================================
+    // NEW OPTIONAL FIELDS
+    // ============================================
+    nationalCode: {
+        type: String,
+        required: false,
+        unique: true,
+        sparse: true,     // ← IMPORTANT: allows multiple nulls (otherwise unique index conflicts)
+        default: null
+    },
+    birthdate: {
+        type: String,
+        required: false,
+        default: null
+    },
+    englishName: {
+        type: String,
+        required: false,
+        default: null
+    },
+    englishLastName: {
+        type: String,
+        required: false,
+        default: null
+    },
+
     dateCreated: {
         type: String,
         default: () => new Intl.DateTimeFormat('fa-IR', {
@@ -57,13 +84,16 @@ const clientSchema = mongoose.Schema({
     }
 });
 
+// ✅ Restored — the `id` virtual that returns `_id` as a hex string
 clientSchema.virtual('id').get(function () {
     return this._id.toHexString();
 });
 
+// ✅ Restored — ensures `id` shows up in JSON responses
 clientSchema.set('toJSON', {
     virtuals: true,
 });
 
-exports.Client = mongoose.model('Client', clientSchema);
-exports.clientSchema = clientSchema;
+const Client = mongoose.model('Client', clientSchema);
+
+module.exports = { Client };
