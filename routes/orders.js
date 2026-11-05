@@ -1,4 +1,5 @@
 const Order = require('./../models/order');
+const { enrichOrderTitles } = require('../utils/publicItemTitles');
 const express = require('express');
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.get('/', limiter, async (req, res) => {
             .sort({ dateCreated: -1 })
             .limit(100);
         
-        res.json(orders);
+        res.json(await enrichOrderTitles(orders));
     } catch (error) {
         res.status(500).json({ 
             success: false, 
@@ -43,7 +44,7 @@ router.get('/all', limiter, async (req, res) => {
         res.json({
             success: true,
             count: orders.length,
-            orders
+            orders: await enrichOrderTitles(orders)
         });
     } catch (error) {
         res.status(500).json({ 
@@ -114,7 +115,7 @@ router.get('/:id', limiter, async (req, res) => {
                 message: 'سفارش یافت نشد' 
             });
         }
-        res.json(order);
+        res.json((await enrichOrderTitles([order]))[0]);
     } catch (error) {
         res.status(500).json({ 
             success: false, 

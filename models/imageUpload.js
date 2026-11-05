@@ -10,6 +10,8 @@ const imageMetadataSchema = new mongoose.Schema({
         type: String, 
         default: '' 
     },
+    nameEn: { type: String, default: '', maxlength: 500 },
+    altEn: { type: String, default: '', maxlength: 2000 },
     liked: {
         type: Boolean,
         default: false

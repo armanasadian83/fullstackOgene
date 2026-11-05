@@ -1,4 +1,5 @@
 const {Service} = require('./../models/service');
+const { validateEnglishContent } = require('../utils/englishContent');
 
 const express = require('express');
 const router = express.Router();
@@ -44,9 +45,10 @@ router.get("/:id", limiter, async (req, res) => {
 
 
 // create
-router.post('/add', limiter, async (req, res) => {
+router.post('/add', limiter, validateEnglishContent('service'), async (req, res) => {
 
     let service = new Service({
+        ...req.englishContent,
         name: req.body.name,
         field: req.body.field
     });
@@ -86,11 +88,12 @@ router.delete('/:id', limiter, async (req, res) => {
 
 
 // update
-router.put('/:id', limiter, async (req, res) => {
+router.put('/:id', limiter, validateEnglishContent('service'), async (req, res) => {
 
     const serviceItem = await Service.findByIdAndUpdate(
         req.params.id,
         {
+            ...req.englishContent,
             name: req.body.name,
             field: req.body.field,
         },
@@ -109,4 +112,4 @@ router.put('/:id', limiter, async (req, res) => {
 })
 
 
-module.exports = router; 
+module.exports = router;

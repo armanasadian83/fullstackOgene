@@ -19,6 +19,11 @@ const requestSchema = mongoose.Schema({
         type: String,
         default: ''
     },
+    description: {
+        type: String,
+        default: '',
+        maxlength: 2000
+    },
     dateCreated: {
         type: String,
         default: () => new Intl.DateTimeFormat('fa-IR', {

@@ -69,6 +69,8 @@ const productSchema = mongoose.Schema({
     }
 });
 
+productSchema.add(require('../utils/englishContent').englishSchemaFields('product'));
+
 productSchema.virtual('id').get(function (){
     return this._id.toHexString();
 });

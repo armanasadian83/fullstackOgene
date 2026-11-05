@@ -1,4 +1,6 @@
 const {Product} = require('./../models/products');
+const { validateEnglishContent } = require('../utils/englishContent');
+const { enrichCatalogEvents } = require('../utils/publicItemTitles');
 const express = require('express');
 const router = express.Router();
 
@@ -156,15 +158,16 @@ router.get('/', limiter, async (req, res) => {
     if(!productList){
         res.status(500).json({success: false})
     }
-    res.send(productList);
+    res.send(await enrichCatalogEvents(productList));
 
 });
 
 
 
-router.post('/create', limiter, async (req, res) => {
+router.post('/create', limiter, validateEnglishContent('product'), async (req, res) => {
 
     let product = new Product({
+        ...req.englishContent,
         name: req.body.name,
         description: req.body.description,
         images: req.body.images,
@@ -203,7 +206,7 @@ router.get('/:id', limiter, async (req, res) => {
         res.status(500).json({message : "The product with given ID was not found!"})
     }
 
-    return res.status(200).send(product);
+    return res.status(200).send((await enrichCatalogEvents([product]))[0]);
 });
 
 
@@ -240,7 +243,7 @@ router.delete('/:id', limiter, async (req, res) => {
 
 });
 
-router.put('/:id', limiter, async (req, res) => {
+router.put('/:id', limiter, validateEnglishContent('product'), async (req, res) => {
 
     const d = new Date()
     const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short', timeZone: 'Asia/Tehran'}).format(d)
@@ -248,6 +251,7 @@ router.put('/:id', limiter, async (req, res) => {
     const product = await Product.findByIdAndUpdate(
         req.params.id,
         {
+            ...req.englishContent,
             name: req.body.name,
             description: req.body.description,
             images: req.body.images,  // ✅ مستقیماً از req.body استفاده کن

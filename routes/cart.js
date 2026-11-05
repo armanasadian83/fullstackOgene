@@ -1,4 +1,5 @@
 const {Cart} = require('../models/cart');
+const { enrichItemTitles } = require('../utils/publicItemTitles');
 const express = require('express');
 const router = express.Router();
 
@@ -35,7 +36,7 @@ router.get('/', limiter, async (req, res) => {
         if(!cartList){
             res.status(500).json({success: false})
         }
-        return res.status(200).json(cartList);
+        return res.status(200).json(await enrichItemTitles(cartList));
     }
 } catch (error) {
     res.status(500).json({success : false})

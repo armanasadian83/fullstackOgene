@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const mongoose = require('mongoose');
 
 // Import SMS service (NOT email)
 const smsService = require('../utils/smsService');
@@ -712,8 +713,19 @@ router.post('/change-password-final', async (req, res) => {
 // GET / COUNT / DELETE / UPDATE (Existing routes)
 // ============================================
 
+const CLIENT_PROFILE_PROJECTION = '-password -otp -otpExpires -resetPasswordOTP -resetPasswordOTPExpires';
+
+const sendClientProfileError = (res, status, code, message, field) => res.status(status).json({
+    error: true,
+    success: false,
+    code,
+    msg: message,
+    message,
+    ...(field ? { field } : {})
+});
+
 router.get('/', limiter, async (req, res) => {
-    const clientList = await Client.find();
+    const clientList = await Client.find().select(CLIENT_PROFILE_PROJECTION);
     if (!clientList) {
         res.status(500).json({ success: false });
     }
@@ -721,11 +733,19 @@ router.get('/', limiter, async (req, res) => {
 });
 
 router.get('/:id', limiter, async (req, res) => {
-    const client = await Client.findById(req.params.id);
-    if (!client) {
-        res.status(500).json({ message: 'The client with the given ID was not found' });
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return sendClientProfileError(res, 400, 'INVALID_CLIENT_ID', 'شناسه حساب کاربری معتبر نیست.');
     }
-    res.status(200).send(client);
+    try {
+        const client = await Client.findById(req.params.id).select(CLIENT_PROFILE_PROJECTION);
+        if (!client) {
+            return sendClientProfileError(res, 404, 'CLIENT_NOT_FOUND', 'حساب کاربری پیدا نشد. لطفاً دوباره وارد شوید.');
+        }
+        return res.status(200).send(client);
+    } catch (error) {
+        console.error('Error in GET /api/client/:id:', error.name);
+        return sendClientProfileError(res, 500, 'CLIENT_READ_FAILED', 'دریافت اطلاعات حساب کاربری انجام نشد. دوباره تلاش کنید.');
+    }
 });
 
 router.delete('/:id', limiter, (req, res) => {
@@ -757,6 +777,12 @@ router.get('/get/count', limiter, async (req, res) => {
 // ✅ Works with both the account-page edit form and the CompleteInfo page.
 // ============================================
 router.put('/:id', limiter, async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return sendClientProfileError(res, 400, 'INVALID_CLIENT_ID', 'شناسه حساب کاربری معتبر نیست.');
+    }
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+        return sendClientProfileError(res, 400, 'CLIENT_VALIDATION_FAILED', 'اطلاعات واردشده معتبر نیست.');
+    }
     try {
         const {
             name,
@@ -777,9 +803,9 @@ router.put('/:id', limiter, async (req, res) => {
             timeZone: 'Asia/Tehran'
         }).format(d);
 
-        const clientExist = await Client.findById(req.params.id);
+        const clientExist = await Client.findById(req.params.id).select('_id');
         if (!clientExist) {
-            return res.status(404).send('the client cannot be updated!');
+            return sendClientProfileError(res, 404, 'CLIENT_NOT_FOUND', 'حساب کاربری پیدا نشد. لطفاً دوباره وارد شوید.');
         }
 
         // Build update object — only include fields actually sent.
@@ -805,20 +831,30 @@ router.put('/:id', limiter, async (req, res) => {
         const client = await Client.findByIdAndUpdate(
             req.params.id,
             { $set: update },
-            { new: true }
-        );
+            { new: true, runValidators: true }
+        ).select(CLIENT_PROFILE_PROJECTION);
 
         if (!client) {
-            return res.status(400).send('the client cannot be updated!');
+            return sendClientProfileError(res, 404, 'CLIENT_NOT_FOUND', 'حساب کاربری پیدا نشد. لطفاً دوباره وارد شوید.');
         }
 
-        res.send(client);
+        return res.send(client);
     } catch (error) {
-        console.error('Error in PUT /:id:', error);
-        res.status(500).json({
-            error: true,
-            msg: 'مشکلی در بروزرسانی اطلاعات کاربر وجود دارد!'
-        });
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern || error.keyValue || {})
+                .find((key) => ['email', 'phone', 'nationalCode'].includes(key));
+            const messages = {
+                email: 'این ایمیل قبلاً ثبت شده است.',
+                phone: 'این شماره تلفن قبلاً ثبت شده است.',
+                nationalCode: 'این کد ملی قبلاً ثبت شده است.'
+            };
+            return sendClientProfileError(res, 409, 'DUPLICATE_FIELD', messages[field] || 'این اطلاعات قبلاً ثبت شده است.', field);
+        }
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return sendClientProfileError(res, 400, 'CLIENT_VALIDATION_FAILED', 'اطلاعات واردشده معتبر نیست.');
+        }
+        console.error('Error in PUT /api/client/:id:', error.name);
+        return sendClientProfileError(res, 500, 'CLIENT_UPDATE_FAILED', 'مشکلی در بروزرسانی اطلاعات کاربر وجود دارد!');
     }
 });
 

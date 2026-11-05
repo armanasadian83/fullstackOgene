@@ -84,6 +84,8 @@ const courseSchema = mongoose.Schema({
     }
 });
 
+courseSchema.add(require('../utils/englishContent').englishSchemaFields('course'));
+
 courseSchema.virtual('id').get(function (){
     return this._id.toHexString();
 });

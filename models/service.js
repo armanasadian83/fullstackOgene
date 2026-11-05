@@ -19,6 +19,8 @@ const serviceSchema = mongoose.Schema({
     },
 });
 
+serviceSchema.add(require('../utils/englishContent').englishSchemaFields('service'));
+
 serviceSchema.virtual('id').get(function () {
     return this._id.toHexString(); 
 });

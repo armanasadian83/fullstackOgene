@@ -40,11 +40,18 @@ router.get("/:id", async (req, res) => {
 // create
 router.post('/create', limiter, async (req, res) => {
 
+    const description = req.body.description;
+    if (description !== undefined && (typeof description !== 'string' || description.length > 2000)) {
+        const message = 'توضیحات باید متن و حداکثر ۲۰۰۰ کاراکتر باشد.';
+        return res.status(400).json({ success: false, error: true, code: 'INVALID_DESCRIPTION', msg: message, message });
+    }
+
     let request = new Request({
         reqName: req.body.reqName,
         name: req.body.name,
         phone: req.body.phone,
-        userId: req.body.userId
+        userId: req.body.userId,
+        description
     });
 
     if(!request) {
@@ -106,4 +113,4 @@ router.put('/:id', limiter, async (req, res) => {
 })
 
 
-module.exports = router; 
+module.exports = router;

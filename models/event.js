@@ -7,6 +7,8 @@ const eventSchema = mongoose.Schema({
     }
 });
 
+eventSchema.add(require('../utils/englishContent').englishSchemaFields('event'));
+
 eventSchema.virtual('id').get(function () {
     return this._id.toHexString(); 
 });

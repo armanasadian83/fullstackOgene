@@ -1,4 +1,6 @@
 const {Course} = require('./../models/course');
+const { validateEnglishContent } = require('../utils/englishContent');
+const { enrichCatalogEvents } = require('../utils/publicItemTitles');
 const express = require('express');
 const router = express.Router();
 
@@ -154,15 +156,16 @@ router.get('/', limiter, async (req, res) => {
     if(!courseList){
         res.status(500).json({success: false})
     }
-    res.send(courseList);
+    res.send(await enrichCatalogEvents(courseList));
 
 });
 
 
 
-router.post('/create', limiter, async (req, res) => {
+router.post('/create', limiter, validateEnglishContent('course'), async (req, res) => {
 
     let course = new Course({
+        ...req.englishContent,
         name: req.body.name,
         description: req.body.description,
         headline: req.body.headline,
@@ -203,7 +206,7 @@ router.get('/:id', limiter, async (req, res) => {
         res.status(500).json({message : "The course with given ID was not found!"})
     }
 
-    return res.status(200).send(course);
+    return res.status(200).send((await enrichCatalogEvents([course]))[0]);
 });
 
 
@@ -240,7 +243,7 @@ router.delete('/:id', limiter, async (req, res) => {
 
 });
 
-router.put('/:id', limiter, async (req, res) => {
+router.put('/:id', limiter, validateEnglishContent('course'), async (req, res) => {
 
     const d = new Date()
     const time = new Intl.DateTimeFormat('fa-IR', {dateStyle: 'short',timeStyle: 'short', timeZone: 'Asia/Tehran'}).format(d)
@@ -248,6 +251,7 @@ router.put('/:id', limiter, async (req, res) => {
     const course = await Course.findByIdAndUpdate(
         req.params.id,
         {
+            ...req.englishContent,
             name: req.body.name,
             description: req.body.description,
             headline: req.body.headline,

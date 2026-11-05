@@ -5,6 +5,7 @@ const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { Course } = require('./../models/course');
 const { Product } = require('./../models/products');
 const { ImageUpload } = require('./../models/imageUpload');
+const { validateEnglishContent } = require('../utils/englishContent');
 const rateLimit = require('express-rate-limit');
 
 const limiter = rateLimit({
@@ -16,7 +17,7 @@ const limiter = rateLimit({
 // Helper function to get all images used in courses with course details
 const getCourseImagesWithIds = async () => {
     try {
-        const courses = await Course.find({}, 'images name');
+        const courses = await Course.find({}, 'images name nameEn');
         const imageData = [];
         courses.forEach(course => {
             if (course.images && course.images.length > 0) {
@@ -25,7 +26,8 @@ const getCourseImagesWithIds = async () => {
                         imageData.push({
                             url: img,
                             courseId: course._id.toString(),
-                            courseName: course.name
+                            courseName: course.name,
+                            courseNameEn: course.nameEn || ''
                         });
                     }
                 });
@@ -41,7 +43,7 @@ const getCourseImagesWithIds = async () => {
 // Helper function to get all images used in products with product details
 const getProductImagesWithIds = async () => {
     try {
-        const products = await Product.find({}, 'images name');
+        const products = await Product.find({}, 'images name nameEn');
         const imageData = [];
         products.forEach(product => {
             if (product.images && product.images.length > 0) {
@@ -50,7 +52,8 @@ const getProductImagesWithIds = async () => {
                         imageData.push({
                             url: img,
                             productId: product._id.toString(),
-                            productName: product.name
+                            productName: product.name,
+                            productNameEn: product.nameEn || ''
                         });
                     }
                 });
@@ -119,6 +122,8 @@ const getImageMetadataMap = async () => {
                     metadataMap[key] = {
                         name: doc.metadata[key].name || '',
                         alt: doc.metadata[key].alt || '',
+                        nameEn: doc.metadata[key].nameEn || '',
+                        altEn: doc.metadata[key].altEn || '',
                         liked: doc.metadata[key].liked || false,
                         updatedAt: doc.metadata[key].updatedAt || null,
                         // ذخیره URL برای تطابق
@@ -155,6 +160,8 @@ const saveImageMetadata = async (imageKey, imageUrl, name, alt) => {
         imageUpload.metadata[imageKey] = {
             name: name || '',
             alt: alt || '',
+            nameEn: existingMetadata.nameEn || '',
+            altEn: existingMetadata.altEn || '',
             liked: existingMetadata.liked || false,
             updatedAt: new Date()
         };
@@ -212,12 +219,14 @@ router.get('/images', limiter, async (req, res) => {
             
             const courseInfo = usedInCourses.length > 0 ? {
                 id: usedInCourses[0].courseId,
-                name: usedInCourses[0].courseName
+                name: usedInCourses[0].courseName,
+                nameEn: usedInCourses[0].courseNameEn
             } : null;
             
             const productInfo = usedInProducts.length > 0 ? {
                 id: usedInProducts[0].productId,
-                name: usedInProducts[0].productName
+                name: usedInProducts[0].productName,
+                nameEn: usedInProducts[0].productNameEn
             } : null;
             
             let linkedId = null;
@@ -248,12 +257,14 @@ router.get('/images', limiter, async (req, res) => {
                 linkedType: linkedType,
                 linkedName: linkedName,
                 displayName: metadata.name || img.name,
+                displayNameEn: metadata.nameEn || '',
                 alt: metadata.alt || '',
+                altEn: metadata.altEn || '',
                 liked: metadata.liked || false,
                 metadataUpdatedAt: metadata.updatedAt || null,
                 usageDetails: {
-                    courses: usedInCourses.map(c => ({ id: c.courseId, name: c.courseName })),
-                    products: usedInProducts.map(p => ({ id: p.productId, name: p.productName }))
+                    courses: usedInCourses.map(c => ({ id: c.courseId, name: c.courseName, nameEn: c.courseNameEn })),
+                    products: usedInProducts.map(p => ({ id: p.productId, name: p.productName, nameEn: p.productNameEn }))
                 }
             };
         });
@@ -295,7 +306,7 @@ router.get('/images', limiter, async (req, res) => {
 // Update image metadata (name and alt)
 // ============================================
 
-router.put('/image/:imageKey/metadata', limiter, async (req, res) => {
+router.put('/image/:imageKey/metadata', limiter, validateEnglishContent('gallery'), async (req, res) => {
     try {
         const { imageKey } = req.params;
         const { name, alt, imageUrl } = req.body;
@@ -327,6 +338,8 @@ router.put('/image/:imageKey/metadata', limiter, async (req, res) => {
         imageUpload.metadata[imageKey] = {
             name: name || '',
             alt: alt || '',
+            nameEn: req.englishContent.nameEn ?? existingMetadata.nameEn ?? '',
+            altEn: req.englishContent.altEn ?? existingMetadata.altEn ?? '',
             liked: existingMetadata.liked || false,
             updatedAt: new Date()
         };
@@ -342,7 +355,9 @@ router.put('/image/:imageKey/metadata', limiter, async (req, res) => {
             data: {
                 imageKey: imageKey,
                 name: name || '',
-                alt: alt || ''
+                alt: alt || '',
+                nameEn: imageUpload.metadata[imageKey].nameEn,
+                altEn: imageUpload.metadata[imageKey].altEn
             }
         });
     } catch (error) {
@@ -386,6 +401,8 @@ router.get('/image/:imageKey/metadata', limiter, async (req, res) => {
                 imageKey: imageKey,
                 name: metadata.name || '',
                 alt: metadata.alt || '',
+                nameEn: metadata.nameEn || '',
+                altEn: metadata.altEn || '',
                 liked: metadata.liked || false
             }
         });
@@ -438,12 +455,14 @@ router.get('/images/folder/:folder', limiter, async (req, res) => {
             
             const courseInfo = usedInCourses.length > 0 ? {
                 id: usedInCourses[0].courseId,
-                name: usedInCourses[0].courseName
+                name: usedInCourses[0].courseName,
+                nameEn: usedInCourses[0].courseNameEn
             } : null;
             
             const productInfo = usedInProducts.length > 0 ? {
                 id: usedInProducts[0].productId,
-                name: usedInProducts[0].productName
+                name: usedInProducts[0].productName,
+                nameEn: usedInProducts[0].productNameEn
             } : null;
             
             let linkedId = null;
@@ -473,12 +492,14 @@ router.get('/images/folder/:folder', limiter, async (req, res) => {
                 linkedType: linkedType,
                 linkedName: linkedName,
                 displayName: metadata.name || img.name,
+                displayNameEn: metadata.nameEn || '',
                 alt: metadata.alt || '',
+                altEn: metadata.altEn || '',
                 liked: metadata.liked || false,
                 metadataUpdatedAt: metadata.updatedAt || null,
                 usageDetails: {
-                    courses: usedInCourses.map(c => ({ id: c.courseId, name: c.courseName })),
-                    products: usedInProducts.map(p => ({ id: p.productId, name: p.productName }))
+                    courses: usedInCourses.map(c => ({ id: c.courseId, name: c.courseName, nameEn: c.courseNameEn })),
+                    products: usedInProducts.map(p => ({ id: p.productId, name: p.productName, nameEn: p.productNameEn }))
                 }
             };
         });
@@ -922,7 +943,7 @@ router.get('/liked', limiter, async (req, res) => {
 // FORCE SYNC - همگام‌سازی اجباری متادیتا
 // ============================================
 
-router.post('/force-sync', limiter, async (req, res) => {
+router.post('/force-sync', limiter, validateEnglishContent('gallery'), async (req, res) => {
     try {
         const { imageKey, imageUrl, name, alt } = req.body;
         
@@ -949,6 +970,8 @@ router.post('/force-sync', limiter, async (req, res) => {
         imageUpload.metadata[imageKey] = {
             name: name || '',
             alt: alt || '',
+            nameEn: req.englishContent.nameEn ?? imageUpload.metadata[imageKey]?.nameEn ?? '',
+            altEn: req.englishContent.altEn ?? imageUpload.metadata[imageKey]?.altEn ?? '',
             liked: imageUpload.metadata[imageKey]?.liked || false,
             updatedAt: new Date()
         };

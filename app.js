@@ -25,6 +25,7 @@ const orderRoutes = require('./routes/orders');
 const galleryRoutes = require('./routes/gallery');
 const uploadRoutes = require('./routes/upload');
 const paymentRoutes = require('./routes/payment');
+const checkoutRoutes = require('./routes/checkout');
 
 // deployment
 const health = require("./routes/health");
@@ -47,6 +48,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/checkout', checkoutRoutes);
 
 app.use("/health", health);
 

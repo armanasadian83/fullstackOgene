@@ -1,4 +1,5 @@
 const {Event} = require('./../models/event');
+const { validateEnglishContent } = require('../utils/englishContent');
 
 const express = require('express');
 const router = express.Router();
@@ -36,9 +37,10 @@ router.get("/:id", limiter, async (req, res) => {
 
 
 // create
-router.post('/create', limiter, async (req, res) => {
+router.post('/create', limiter, validateEnglishContent('event'), async (req, res) => {
 
     let event = new Event({
+        ...req.englishContent,
         name: req.body.name
     });
 
@@ -76,11 +78,12 @@ router.delete('/:id', limiter, async (req, res) => {
 
 
 // update
-router.put('/:id', limiter, async (req, res) => {
+router.put('/:id', limiter, validateEnglishContent('event'), async (req, res) => {
 
     const eventItem = await Event.findByIdAndUpdate(
         req.params.id,
         {
+            ...req.englishContent,
             name: req.body.name
         },
         {new : true}
@@ -98,4 +101,4 @@ router.put('/:id', limiter, async (req, res) => {
 })
 
 
-module.exports = router; 
+module.exports = router;
